@@ -72,7 +72,14 @@ Ans:  1)  Less bugs and simpler code for kernel. It is because separation
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
-Ans: None
+Ans:
+    struct thread
+    {
+      bool exit_status;
+    };
+
+    bool exit_status is for the exit status of thread so that process_wait
+    will have a spinning wait while the thread is in running state.
 
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a

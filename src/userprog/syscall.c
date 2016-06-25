@@ -16,11 +16,15 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED)
 {
-  switch (* (int *) f->esp)
+  int *esp = f->esp;
+  int syscall_status = *esp;
+  if (syscall_status == SYS_HALT)
   {
-    case SYS_HALT:
-      halt();
-      break;
+    halt();
+  } else if (syscall_status == SYS_EXIT)
+  {
+    thread_current()->exit_status = true;
+    thread_exit();
   }
   printf ("system call!\n");
   thread_exit ();
