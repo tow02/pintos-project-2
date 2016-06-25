@@ -8,9 +8,8 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Paween Theanvanichpant <paween.the@gmail.com>
+Torpong Juntree <torpong.boss@gmail.com>
 
 ---- PRELIMINARIES ----
 
@@ -29,20 +28,41 @@ FirstName LastName <email@domain.example>
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+Ans: None
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
+Ans:  1)  get rid of any excess whitespace in the string
+      2)  parse the string keep offsets of each argument in an
+          array(from start of string)
+      3)  do backwards through the array to get length and
+          the address, and put onto the stack in reverse order
+      4)  get the address of $esp for all argument into new array
+      5)  push all addresses of argument by using argument address
+          list, which is in reserve order.
+      6)  while decrementing $esp, push argc and fake return value
+      7)  The elements of argv will be push onto the stack in reverse
+          order, and check the length of the string to make sure that
+          argument string will not be too long.
 
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
+Ans:  strtok_r() is a reentrant version of strtok(), but strtok()
+      use global data, which is unsafe for kernel used. Also, the
+      kernel need to be reentrant.
 
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+Ans:  1)  Less bugs and simpler code for kernel. It is because separation
+          of the name and arguments is done outside of the kernel.
+      2)  Instead of letting the kernel do all the work by itself,
+          doing in the Unix way help stack setup for kernel in a
+          consistent manner, which make kernel do less job.
 
 			     SYSTEM CALLS
 			     ============
@@ -52,15 +72,41 @@ FirstName LastName <email@domain.example>
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+Ans: None
 
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+Ans: Whenever the file is opened, the file descriptors are also created,
+      and they are unique within single process. The file descriptors will
+      be removed when the file is closed.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+Ans:  Read:
+        At first, we need to check whether the buffer and buffer + size
+        are both valid pointers. If they are not valid, then we exit(-1).
+        Next, we acquire the file system lock. After the current thread
+        acquire the lock, we check if fd is in the special two cases:
+        STDOUT_FILENO and STDIN_FILENO. If it's STDOUT_FILENO, then
+        release the lock and return -1. If it's STDIN_FILENO, then
+        retrieve keys from standard input. After this, we release the
+        lock and return 0. Otherwise, find the open file according to
+        fd number from the open_files list. Then, we use file_read in
+        filesys to read the file, and get the status of reading file.
+        Finally, release the lock and return the status of reading file.
+
+      Write:
+        It's similar to read system call. First, we need to make validate
+        the given buffer that it is valid pointer. Then we acquire the fs_lock.
+        If the fd is STDIN_FILENO, then release the lock and return -1.
+        If the fd is STDOUT_FILENO, then use putbuf to print the content
+        in the buffer to the console. Other than these 2 cases, find the
+        open file through fd number. We use file_write to write the content
+        of the buffer to the file and get the status. After this, release
+        the lock and return the status.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -68,9 +114,41 @@ FirstName LastName <email@domain.example>
 >> (e.g. calls to pagedir_get_page()) that might result?  What about
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
+Ans:  Full page:
+        Least number of data is 1. If the first inspection get a page
+        head back, we actually don't need to inspect any more. It can
+        contain one page of data.
+
+        The greatest number of data can be 4096 if it's not contiguous.
+        In this case, we need to check every address to make sure that
+        it is a valid address. When it's contiguous, the greatest number
+        can be 2. If we get a kernel virtual address that is not a page head,
+        we have to check the start and the end pointer of the full page
+        data and see if it's mapped.
+
+      2 bytes of data:
+        Least number of data is 1. If we get back a kernel virtual address
+        that has more then 2 bytes space to the end of page, we know it's
+        in this page, we don't another inspection.
+
+        The greatest number will also be 2. If it's not contiguous or if
+        it's contiguous. However, we get a kernel virtual address back that
+        only 1 byte far from the end of page, we have to inspect where the
+        other byte is located.
+
+      Improvements:
+        we don't have improvements.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+Ans:  First, it's going to get a pid and look through the list of child
+      processes for that pid. It will check whether that child
+      finish its running or not, else it's going to return -1, which indicate
+      that it can not be found. If the child is found then it going to
+      wait and return the exit status of the child as well as remove that
+      child from the list, else it set the waiting bit and block the parent.
+      However, if the blocking one is finished its job, then its parent will
+      get update. unblock its parent, and return exit status.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -85,6 +163,10 @@ FirstName LastName <email@domain.example>
 >> allocated resources (locks, buffers, etc.) are freed?  In a few
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
+Ans: whatever about PHYS_BASE will be read by the process, but if
+      it can't read, then segfaults will return -1 and exit. The
+      necessary blocks and all important stuff will be free when
+      the exit occurred.
 
 ---- SYNCHRONIZATION ----
 
@@ -92,6 +174,13 @@ FirstName LastName <email@domain.example>
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+Ans: When the execs get to run, it will create a semaphore of value
+      one and decrements it. Then it will decrement again when the
+      child process started. While load() have not been called on the
+      new executable, and increase the semaphore, the child process
+      will be blocked. Moreover, while the child process is blocked
+      its parent will be able to inspect the load status of the
+      child thread.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -99,17 +188,41 @@ FirstName LastName <email@domain.example>
 >> that all resources are freed in each case?  How about when P
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
+Ans: P will be blocked until C exits, and then unlock, this is a
+      case that P calls wait(C) before C exits. For case that P calls
+      wait(C) after C exits, P's thread will be updated by C with
+      details. Therefore, P can access and free them when P calls wait.
+      This can happen because C's thread is freed from kernel, and C's
+      data in P is also freed by P. For case, P exits before C exits,
+      P will get updated by parent PID of C, so it will points to main.
+      P can just free all its information of C for the case that P still
+      exit after C exits.
 
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
+Ans: To make it faster by taking advantage of a processor, we check
+      that the pointer is in the right region, before dereference it
+      as well as make sure that we handling kernel pagefaults in the
+      right method.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+Ans: Using simple file descriptor lists
+      Advantages:
+        1) Ints and file structs mapping is simple and intuitive.
+        2) Working with the file descriptors is not complicated
+        3) To make it even more simpler, there is a helper function
+            that help obtain the file_desc struct from file descriptor.
+      Disadvantages:
+        1) It take long time to locate the file descriptor, when we
+            have a lot of files open at the same time.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+Ans: We did not need to change anything since the thing is work
+      perfectly fine, so no more advantages.
 
 			   SURVEY QUESTIONS
 			   ================
